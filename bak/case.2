@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# show 80 newest cases first,  provide option to view older,   grouped into pages of 80
+#PAGE_CASES=92  # full page
+#PAGE_CASES=44 
+PAGE_CASES=10 
+CASES="/home/lowk/cases"
+
+display_batch(){
+   echo "Display BATCHES"
+#   echo "${DATES[@]}"
+   select DATE in "${DATES[@]}"
+   do
+      echo "${DATE}"
+      counter=0
+      while [ "${DATE}" != "${DATES[${counter}]}" ]
+      do
+         echo "Next"
+         counter=$((counter+1))
+      done
+      echo "${counter} is the match ${BATCHES[${counter}]}"
+      break
+   done
+   echo "end d_b"
+}
+
+break_down_cases(){
+   CASES_GROUPED=${PAGE_CASES}
+   echo "break down cases"
+   echo "TOTAL CASES = ${total_cases}"
+   ls -ltr ${CASES} | head -n -${PAGE_CASES} | tail -1
+#   older_cases=`ls -tr ${CASES} | head -n -${PAGE_CASES}|wc -l`
+#   exit
+   counter=0
+#   echo "GROUP SIZE = ${CASES_GROUPED}"
+#   echo "LOOP"
+   while [ "${older_cases}" -gt ${PAGE_CASES} ]
+   do
+#      echo "S"
+#      echo "${older_cases}"
+      BATCHES[counter]="${older_cases}"
+      newest=`ls -tr ${CASES} | head -n -${CASES_GROUPED} | tail -1`
+      MODDATE=$(stat -c %y "${CASES}/${newest}")
+      DATES[counter]=${MODDATE%% *}
+      counter=$((counter+1))
+      CASES_GROUPED=$((CASES_GROUPED+PAGE_CASES))
+#      echo "GROUP SIZE = ${CASES_GROUPED}"
+      older_cases=`ls -tr ${CASES} | head -n -${CASES_GROUPED}|wc -l`
+#      echo "E"
+   done
+   BATCHES[counter]="1"
+   newest=`ls -t ${CASES} |  tail -1`
+   MODDATE=$(stat -c %y "${CASES}/${newest}")
+   DATES[counter]=${MODDATE%% *}
+   
+   echo "OUTPUT"
+#   for i in "${BATCHES[@]}"
+   for ((i=0; i<${#BATCHES[@]}; i++))
+   do
+      echo "$i - ${BATCHES[$i]} ${DATES[$i]}"
+   done
+#   echo "${DATES[@]}"
+   echo "end b_d_c"
+   display_batch
+}
+
+#echo "ALL"
+#ls -tr ~/cases/ 
+#echo "NEWEST 80"
+touch ~/cases/OLDER
+total_cases=`ls -tr ${CASES} |wc -l`
+clear
+select DIR in `ls -tr ${CASES} | tail -${PAGE_CASES}`
+do
+   if [ "${DIR}" == "OLDER" ]
+   then
+      clear
+      echo "show older cases"
+      older_cases=`ls -tr ${CASES} | head -n -${PAGE_CASES}|wc -l`
+      echo "$older_cases"
+      if [ "${older_cases}" -gt ${PAGE_CASES} ]
+      then
+            break_down_cases
+      else
+         select DIR in `ls -tr ${CASES} | head -n -${PAGE_CASES}`
+         do
+            break
+         done
+      fi
+   else
+      true
+   fi 
+   break
+done
+
+echo ${DIR}

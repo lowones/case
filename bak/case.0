@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# show 80 newest cases first,  provide option to view older,   grouped into pages of 80
+#PAGE_CASES=92  # full page
+PAGE_CASES=44 
+CASES="/home/lowk/cases"
+
+break_down_cases(){
+   CASES_GROUPED = ${PAGE_CASES}
+   echo "break down cases"
+   echo "TOTAL CASES = ${total_cases}"
+   ls -ltr ${CASES} | head -n -${PAGE_CASES} | tail -1
+   newest=`ls -tr ${CASES} | head -n -${PAGE_CASES} | tail -1`
+   echo "newest ${newest}"
+   MODDATE=$(stat -c %y "${CASES}/${newest}")
+   MODDATE=${MODDATE%% *}
+   echo "${MODDATE}"
+#   older_cases=`ls -tr ${CASES} | head -n -${PAGE_CASES}|wc -l`
+   exit
+   while [ "${older_cases}" -gt ${PAGE_CASES} ]
+   do
+      echo "hello"
+   done
+   echo "end b_d_c"
+}
+
+#echo "ALL"
+#ls -tr ~/cases/ 
+#echo "NEWEST 80"
+touch ~/cases/OLDER
+total_cases=`ls -tr ${CASES} |wc -l`
+clear
+select DIR in `ls -tr ${CASES} | tail -${PAGE_CASES}`
+do
+   if [ "${DIR}" == "OLDER" ]
+   then
+      clear
+      echo "show older cases"
+      older_cases=`ls -tr ${CASES} | head -n -${PAGE_CASES}|wc -l`
+      echo "$older_cases"
+      if [ "${older_cases}" -gt ${PAGE_CASES} ]
+      then
+            break_down_cases
+      else
+         select DIR in `ls -tr ${CASES} | head -n -${PAGE_CASES}`
+         do
+            break
+         done
+      fi
+   else
+      true
+   fi 
+   break
+done
+
+echo ${DIR}

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# show 80 newest cases first,  provide option to view older,   grouped into pages of 80
+PAGE_CASES=92 
+
+#echo "ALL"
+#ls -tr ~/cases/ 
+#echo "NEWEST 80"
+touch ~/cases/OLDER
+clear
+select DIR in `ls -tr ~/cases/ | tail -${PAGE_CASES}`
+do
+   if [ "${DIR}" == "OLDER" ]
+   then
+      clear
+      echo "show older cases"
+      select DIR in `ls -tr ~/cases/ | head -n -${PAGE_CASES}`
+      do
+         break
+      done
+   else
+      true
+   fi 
+   break
+done
+
+echo ${DIR}

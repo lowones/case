@@ -1,0 +1,145 @@
+#!/bin/bash
+
+#
+# this script should not be run directly,
+# instead you need to source it from your .bashrc,
+# by adding this line:
+#   . ~/bin/CASE.sh
+#
+# show 80 newest cases first,  provide option to view older,   grouped into pages of 80
+#PAGE_CASES=92  # full page
+#PAGE_CASES=44
+PAGE_CASES=80
+CASES="/home/lowk/cases"
+
+function list_cases(){
+   select DIR in `ls -dtr ${filter} | tail -${PAGE_CASES}`
+   do
+      if [ "${DIR}" == "OLDER" ]
+      then
+         clear
+         echo -e "\t\t\t\tOLDER CASES"
+         older_cases=`ls -dtr ${filter} | head -n -${PAGE_CASES}|wc -l`
+         if [ "${older_cases}" -gt ${PAGE_CASES} ]
+         then
+               break_down_cases
+               select DIR in `ls -dtr ${filter} | sed -n "${p_begin},${p_end}p"`
+               do
+                  CASE_DIR=${CASES}/${DIR}
+                  break
+               done
+         else
+            select DIR in `ls -dtr ${filter} | head -n -${PAGE_CASES}`
+            do
+               CASE_DIR=${CASES}/${DIR}
+               break
+            done
+         fi
+      else
+         true
+      fi 
+      CASE_DIR=${CASES}/${DIR}
+      break
+   done
+}
+
+function display_batch(){
+   select DATE in "${DATES[@]}"
+   do
+      counter=0
+      while [ "${DATE}" != "${DATES[${counter}]}" ]
+      do
+         counter=$((counter+1))
+      done
+      p_end=${BATCHES[${counter}]}
+      p_begin=$((p_end - PAGE_CASES))
+      if [ "${p_begin}" -lt "1" ]
+      then
+         p_begin=1
+      fi
+      break
+   done
+}
+
+function break_down_cases(){
+   CASES_GROUPED=${PAGE_CASES}
+   counter=0
+   while [ "${older_cases}" -gt "0" ]
+   do
+      BATCHES[counter]="${older_cases}"
+      newest=`ls -dtr ${filter} |  head -n -${CASES_GROUPED} | tail -1`
+      MODDATE=$(stat -c %y "${CASES}/${newest}")
+      DATES[counter]=${MODDATE%% *}
+      counter=$((counter+1))
+      CASES_GROUPED=$((CASES_GROUPED+PAGE_CASES))
+      older_cases=`ls -dtr ${filter} | head -n -${CASES_GROUPED}|wc -l`
+   done
+   display_batch
+}
+
+
+function CASE() {
+
+   CASES="/home/lowk/cases"
+   num_regx='^[0-9]+$'
+   CURRENT_DIR=${PWD}
+   touch ${CASES}/OLDER
+   cd ${CASES}
+   filter="*"
+   clear
+
+   if [ "$#" -gt 1 ];
+   then
+      echo -e "\nUsage: ${FUNCNAME[0]} CASE_NAME (optional)\n\n"
+      return 1
+   elif [ "$#" -eq 1 ]
+   then
+      if [[ ${1} =~ ${num_regx} ]];
+      then
+         if [ "${1}" -lt 100000 ];
+         then
+            filter="*${1}*"
+            list_cases
+         else
+            CASE_DIR=${CASES}/${1}
+            if [ -d ${CASE_DIR} ];
+            then
+               echo ${CASE_DIR}
+            else
+               echo -e "${CASE_DIR}\tCREATE? [y]"
+               read CONFIRM
+               if [ "${CONFIRM}" == "y" ]
+               then
+                  echo "CASE CREATED"
+                  mkdir ${CASE_DIR}
+                  cp ${CASES}/TEMPLATE/* ${CASE_DIR}
+               else
+                  echo "CANCEL"
+                  return
+               fi
+            fi
+         fi
+      else
+         echo "search"
+         search=${1}
+         if grep -l ${search} ${CASES}/*/servers>/dev/null;
+         then
+            matches=`grep -l ${search} ${CASES}/*/servers | awk -F'/' '{print $5}'`;
+         else
+            echo "NONE"
+            return
+         fi
+         select DIR in ${matches};
+         do
+            CASE_DIR=${CASES}/${DIR}
+            break
+         done
+         echo ${matches}
+      fi
+   else
+      list_cases
+   fi
+
+   cd ${CURRENT_DIR}
+   cd ${CASE_DIR}
+}

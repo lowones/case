@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# show 80 newest cases first,  provide option to view older,   grouped into pages of 80
+#PAGE_CASES=92  # full page
+#PAGE_CASES=44 
+PAGE_CASES=10 
+CASES="/home/lowk/cases"
+
+display_batch(){
+   echo "Display BATCHES"
+#   echo "${DATES[@]}"
+   select DATE in "${DATES[@]}"
+   do
+      echo "${DATE}"
+      counter=0
+      while [ "${DATE}" != "${DATES[${counter}]}" ]
+      do
+         echo "Next"
+         counter=$((counter+1))
+      done
+      echo "${counter} is the match ${BATCHES[${counter}]}"
+      p_end=${BATCHES[${counter}]}
+      p_begin=$((p_end - PAGE_CASES))
+      if [ "${p_begin}" -lt "1" ]
+      then
+         p_begin=1
+      fi
+      echo "${p_begin} - ${p_end}"
+      ls -tr ${CASES} | sed -n "${p_begin},${p_end}p"
+      break
+   done
+   echo "end d_b"
+}
+
+break_down_cases(){
+   CASES_GROUPED=${PAGE_CASES}
+   echo "break down cases"
+   echo "TOTAL CASES = ${total_cases}"
+   ls -ltr ${CASES} | head -n -${PAGE_CASES} | tail -1
+   counter=0
+   while [ "${older_cases}" -gt "0" ]
+   do
+      BATCHES[counter]="${older_cases}"
+      newest=`ls -tr ${CASES} | head -n -${CASES_GROUPED} | tail -1`
+      MODDATE=$(stat -c %y "${CASES}/${newest}")
+      DATES[counter]=${MODDATE%% *}
+      counter=$((counter+1))
+      CASES_GROUPED=$((CASES_GROUPED+PAGE_CASES))
+      older_cases=`ls -tr ${CASES} | head -n -${CASES_GROUPED}|wc -l`
+   done
+   echo "OUTPUT"
+   for ((i=0; i<${#BATCHES[@]}; i++))
+   do
+      echo "$i - ${BATCHES[$i]} ${DATES[$i]}"
+   done
+   echo "end b_d_c"
+   display_batch
+}
+
+touch ~/cases/OLDER
+total_cases=`ls -tr ${CASES} |wc -l`
+clear
+select DIR in `ls -tr ${CASES} | tail -${PAGE_CASES}`
+do
+   if [ "${DIR}" == "OLDER" ]
+   then
+      clear
+      echo "show older cases"
+      older_cases=`ls -tr ${CASES} | head -n -${PAGE_CASES}|wc -l`
+      echo "$older_cases"
+      if [ "${older_cases}" -gt ${PAGE_CASES} ]
+      then
+            break_down_cases
+      else
+         select DIR in `ls -tr ${CASES} | head -n -${PAGE_CASES}`
+         do
+            break
+         done
+      fi
+   else
+      true
+   fi 
+   break
+done
+
+echo ${DIR}
